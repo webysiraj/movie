@@ -1,0 +1,307 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IMDb Top 250 — Movie Roulette</title>
+<style>
+:root{--gold:#f5c518;--bg:#080b12;--panel:#121a28;--muted:#9aa8bc}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at top,#293550,#080b12 65%);color:#f6f7fb;font:15px Arial,sans-serif;min-height:100vh}
+header{text-align:center;padding:30px 15px 15px}
+.brand{color:var(--gold);font-weight:bold;letter-spacing:3px;font-size:12px}
+h1{font-size:clamp(28px,5vw,48px);margin:15px 0 8px}
+h1 span{color:var(--gold)}
+header p{color:var(--muted);line-height:1.6}
+main{max-width:1150px;margin:auto;padding:15px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:15px 0}
+.stat,.panel{background:#111825eF;border:1px solid #2d394e;border-radius:16px}
+.stat{text-align:center;padding:14px 6px}
+.stat strong{display:block;color:var(--gold);font-size:25px;margin-bottom:5px}
+.stat small{font-size:11px;color:var(--muted)}
+.layout{display:grid;grid-template-columns:1.05fr .95fr;gap:16px;align-items:start}
+.panel{padding:17px;min-width:0}
+.heading{display:flex;justify-content:space-between;align-items:center;gap:8px}
+h2{font-size:18px;margin:0}
+.tag{font-size:10px;color:var(--gold);border:1px solid #665522;border-radius:20px;padding:6px 9px}
+.wheel-wrap{position:relative;width:min(100%,470px);aspect-ratio:1;margin:23px auto 14px}
+canvas{width:100%;height:100%;display:block;filter:drop-shadow(0 12px 25px #0008)}
+.pointer{position:absolute;top:-5px;left:50%;transform:translateX(-50%);z-index:2;border-left:17px solid transparent;border-right:17px solid transparent;border-bottom:0;border-top:30px solid var(--gold);filter:drop-shadow(0 2px 5px #000)}
+button,input{font:inherit}
+button{cursor:pointer}
+.spin{width:100%;border:0;border-radius:12px;background:linear-gradient(100deg,#f5c518,#ffec9b);padding:15px;color:#171408;font-weight:900;font-size:16px}
+button:disabled{opacity:.5;cursor:not-allowed}
+.hint{text-align:center;color:var(--muted);font-size:11px;line-height:1.6}
+.last{margin-top:14px;padding:13px;background:#080d16;border:1px solid #2b3548;border-radius:11px}
+.last small{color:var(--gold);letter-spacing:1px;font-size:10px}
+#last{font-weight:bold;margin-top:7px}
+input{width:100%;padding:11px;background:#080d16;color:white;border:1px solid #344159;border-radius:9px;min-width:0}
+.addrow{display:flex;gap:7px;margin:12px 0}
+.btn{background:#202c3e;color:white;border:1px solid #37445a;border-radius:9px;padding:9px 11px;font-size:12px;font-weight:bold}
+.btn.gold{background:var(--gold);color:#15130a;border-color:var(--gold)}
+.btn.green{background:#123b2c;color:#8cf3bf}
+.btn.red{background:#401c28;color:#ffa2b0}
+.tools{display:flex;gap:7px;flex-wrap:wrap;margin:11px 0}
+.movie-list{display:flex;flex-direction:column;gap:8px;max-height:480px;overflow:auto;margin-top:12px}
+.movie-row{display:flex;align-items:center;gap:10px;background:#090f19;border:1px solid #273349;border-radius:10px;padding:9px}
+.thumb{width:44px;height:63px;object-fit:cover;border-radius:5px;background:#263247;flex-shrink:0}
+.movie-info{flex:1;min-width:0}
+.movie-info strong{font-size:12px;display:block;overflow-wrap:anywhere}
+.movie-info small{display:block;color:var(--muted);font-size:10px;margin-top:5px}
+.remove{padding:7px}
+.empty{text-align:center;color:var(--muted);padding:20px;font-size:12px}
+.overlay{display:none;position:fixed;inset:0;background:#02040cdd;backdrop-filter:blur(8px);z-index:10;align-items:center;justify-content:center;padding:16px}
+.overlay.show{display:flex}
+.modal{width:min(100%,580px);background:linear-gradient(140deg,#1b2638,#090e17);border:1px solid #625326;border-radius:17px;overflow:hidden;box-shadow:0 20px 90px #000c;animation:pop .25s ease}
+@keyframes pop{from{opacity:0;transform:scale(.94) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.goldline{height:5px;background:linear-gradient(90deg,#b98a06,#fff0a0,#b98a06)}
+.modal-content{padding:20px}
+.kicker{text-align:center;color:var(--gold);font-size:10px;font-weight:bold;letter-spacing:2px;margin-bottom:17px}
+.detail{display:grid;grid-template-columns:150px 1fr;gap:18px;align-items:center}
+.poster{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:9px;background:#222e42;box-shadow:0 10px 25px #0007}
+.poster-fallback{width:100%;aspect-ratio:2/3;display:flex;align-items:center;justify-content:center;text-align:center;padding:10px;background:#222e42;color:var(--gold);border-radius:9px;font-weight:bold}
+#title{font-size:clamp(20px,4vw,28px);line-height:1.2;overflow-wrap:anywhere;margin:0 0 12px}
+.rating{color:var(--gold);font-weight:bold;margin:10px 0}
+.meta{color:var(--muted);font-size:12px;line-height:1.7}
+.actions{display:flex;gap:8px;margin-top:20px}
+.actions button{flex:1}
+.close{float:right;background:#ffffff15;color:white;border:0;border-radius:50%;width:29px;height:29px}
+#toast{display:none;position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#202b3d;border:1px solid #485875;border-radius:10px;padding:11px 15px;z-index:30;font-size:12px;max-width:90%;text-align:center}
+footer{text-align:center;color:#8491a6;font-size:11px;padding:25px;line-height:1.7}
+@media(max-width:760px){.layout{grid-template-columns:1fr}.panel{padding:13px}.wheel-wrap{width:min(100%,400px)}}
+@media(max-width:420px){.detail{grid-template-columns:110px 1fr;gap:12px}.modal-content{padding:15px}.actions{flex-direction:column}.stat strong{font-size:21px}}
+</style>
+</head>
+<body>
+<header>
+ <div class="brand">IMDb · CINEMA NIGHT</div>
+ <h1>MOVIE <span>ROULETTE</span></h1>
+ <p>Spin the wheel. Discover your next movie.<br>250 films · Movie posters · Your personal watchlist</p>
+</header>
+<main>
+ <div class="stats">
+  <div class="stat"><strong id="remaining">0</strong><small>ON THE WHEEL</small></div>
+  <div class="stat"><strong id="watched">0</strong><small>WATCHED</small></div>
+  <div class="stat"><strong id="total">0</strong><small>TOTAL MOVIES</small></div>
+ </div>
+ <div class="layout">
+  <section class="panel">
+   <div class="heading"><h2>🎬 Movie Wheel</h2><span class="tag">RANDOM PICK</span></div>
+   <div class="wheel-wrap"><div class="pointer"></div><canvas id="wheel" width="900" height="900"></canvas></div>
+   <button class="spin" id="spin" disabled>✦ SPIN THE WHEEL ✦</button>
+   <p class="hint" id="status">Loading the August 2025 movie list and posters…</p>
+   <div class="last"><small>LAST SELECTED</small><div id="last">Ready for movie night?</div></div>
+  </section>
+  <section class="panel">
+   <div class="heading"><h2>🍿 Your Watchlist</h2><span class="tag" id="badge">250 MOVIES</span></div>
+   <div class="addrow"><input id="newMovie" placeholder="Add another movie…"><button class="btn gold" id="add">+ Add</button></div>
+   <input id="search" placeholder="⌕ Search movies…" style="margin-bottom:10px">
+   <div class="tools">
+    <button class="btn" id="all">All movies</button>
+    <button class="btn" id="toWatch">To watch</button>
+    <button class="btn" id="showWatched">Watched</button>
+   </div>
+   <div id="list" class="movie-list"><div class="empty">Loading movie list…</div></div>
+   <div class="tools">
+    <button class="btn" id="export">Export list</button>
+    <button class="btn" id="import">Import list</button>
+    <button class="btn red" id="reset">Reset watched</button>
+    <input type="file" id="file" accept=".json" hidden>
+   </div>
+   <p class="hint">Progress is saved in this browser.</p>
+  </section>
+ </div>
+</main>
+<footer>
+ 2025 IMDb Top 250 dataset snapshot · Data and poster images load from an external source.<br>
+ Unofficial personal project; not affiliated with IMDb.
+</footer>
+<div class="overlay" id="overlay">
+ <div class="modal"><div class="goldline"></div><div class="modal-content">
+  <button class="close" id="close" aria-label="Close">×</button>
+  <div class="kicker">✦ TONIGHT'S RANDOM PICK ✦</div>
+  <div class="detail">
+   <div id="posterBox"><div class="poster-fallback">🎬 Movie Poster</div></div>
+   <div><h2 id="title">Movie title</h2><div class="meta" id="movieMeta"></div><div class="rating" id="rating"></div><div class="meta">Your next movie-night choice is here.</div></div>
+  </div>
+  <div class="actions"><button class="btn green" id="mark">✓ Watched — remove it</button><button class="btn" id="close2">Not watched / Close</button></div>
+ </div></div>
+</div>
+<div id="toast"></div>
+<script>
+"use strict";
+const DATA_URL="https://raw.githubusercontent.com/sharmadhiraj/free-json-datasets/master/docs/sports-entertainment/imdb_top_movies.json";
+const KEY="movieRoulette2025_v1";
+const COLORS=["#b58b15","#273f64","#87394b","#286452","#51396d","#9c5b2e","#315b75","#773c54","#66652e","#3d5146","#734c3b","#3e456b"];
+const $=id=>document.getElementById(id);
+const canvas=$("wheel"),ctx=canvas.getContext("2d");
+let movies=[],rotation=0,spinning=false,current=null,mode="all",toastTimer;
+
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function uid(){return "m"+Math.random().toString(36).slice(2)+Date.now().toString(36)}
+function active(){return movies.filter(m=>!m.watched)}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(movies))}catch(e){}}
+function toast(s){$("toast").textContent=s;$("toast").style.display="block";clearTimeout(toastTimer);toastTimer=setTimeout(()=>$("toast").style.display="none",2300)}
+function poster(m,cls){
+ const fallback=`<div class="poster-fallback">${esc(m.title)}</div>`;
+ if(!m.poster)return fallback;
+ return `<img class="${cls}" src="${esc(m.poster)}" alt="${esc(m.title)} poster" loading="lazy" onerror="this.onerror=null;this.replaceWith(Object.assign(document.createElement('div'),{className:'poster-fallback',textContent:${JSON.stringify(m.title)}}))">`;
+}
+function stats(){
+ $("remaining").textContent=active().length;
+ $("watched").textContent=movies.filter(m=>m.watched).length;
+ $("total").textContent=movies.length;
+ $("badge").textContent=movies.length+" MOVIES";
+ $("spin").disabled=spinning||active().length===0;
+}
+function draw(){
+ const r=410,cx=450,cy=450,list=active();
+ ctx.clearRect(0,0,900,900);ctx.save();ctx.translate(cx,cy);
+ if(!list.length){
+  ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fillStyle="#172236";ctx.fill();
+  ctx.lineWidth=12;ctx.strokeStyle="#f5c518";ctx.stroke();
+  ctx.fillStyle="#f5c518";ctx.textAlign="center";ctx.textBaseline="middle";
+  ctx.font="bold 30px Arial";ctx.fillText("ALL CAUGHT UP!",0,-12);
+  ctx.fillStyle="#fff";ctx.font="20px Arial";ctx.fillText("Add more movies",0,25);
+  ctx.restore();return;
+ }
+ const step=2*Math.PI/list.length;
+ list.forEach((m,i)=>{
+  const a=-Math.PI/2+i*step+rotation,b=a+step;
+  ctx.beginPath();ctx.moveTo(0,0);ctx.arc(0,0,r,a,b);ctx.closePath();
+  ctx.fillStyle=COLORS[i%COLORS.length];ctx.fill();
+  ctx.strokeStyle="#101522";ctx.lineWidth=4;ctx.stroke();
+  ctx.save();ctx.rotate(a+step/2);ctx.textAlign="right";ctx.textBaseline="middle";
+  ctx.fillStyle="#fff";ctx.shadowColor="#000";ctx.shadowBlur=4;
+  let t=m.title;const max=list.length>18?13:list.length>10?18:24;
+  if(t.length>max)t=t.slice(0,max-1)+"…";
+  ctx.font=`bold ${list.length>18?15:list.length>10?17:20}px Arial`;
+  ctx.fillText(t,r-30,0,r*.74);ctx.restore();
+ });
+ ctx.beginPath();ctx.arc(0,0,70,0,Math.PI*2);ctx.fillStyle="#111a29";ctx.fill();
+ ctx.lineWidth=9;ctx.strokeStyle="#f5c518";ctx.stroke();
+ ctx.beginPath();ctx.arc(0,0,51,0,Math.PI*2);ctx.fillStyle="#f5c518";ctx.fill();
+ ctx.fillStyle="#111";ctx.textAlign="center";ctx.textBaseline="middle";
+ ctx.font="bold 18px Arial";ctx.fillText("IMDb",0,-7);ctx.font="bold 12px Arial";ctx.fillText("SPIN",0,15);
+ ctx.restore();
+}
+function renderList(){
+ const q=$("search").value.trim().toLowerCase();
+ const shown=movies.filter(m=>(mode==="all"||(mode==="watched"?m.watched:!m.watched))&&m.title.toLowerCase().includes(q));
+ $("list").innerHTML=shown.length?shown.map(m=>`
+ <div class="movie-row">
+ ${poster(m,"thumb")}
+ <div class="movie-info"><strong>${esc(m.title)} ${m.watched?"✓":""}</strong>
+ <small>${m.rank?"Rank #"+m.rank+" · ":""}${m.rating?"★ "+m.rating+" · ":""}${m.watched?"Watched":"To watch"}</small></div>
+ <button class="btn remove" data-remove="${esc(m.id)}" aria-label="Remove movie">×</button>
+ </div>`).join(""):`<div class="empty">No movies found.</div>`;
+ stats();
+}
+function render(){stats();renderList();draw()}
+function addMovie(title){
+ title=title.trim();if(!title)return;
+ if(movies.some(m=>m.title.toLowerCase()===title.toLowerCase()))return toast("Movie already exists.");
+ movies.push({id:uid(),title,rank:"",rating:"",poster:"",url:"",watched:false});
+ save();render();$("newMovie").value="";toast("Movie added.");
+}
+function openMovie(m){
+ current=m;$("title").textContent=m.title;
+ $("movieMeta").textContent=(m.rank?"IMDb Top 250 · Rank #"+m.rank:"Added movie")+(m.url?" · ":"");
+ $("rating").textContent=m.rating?"★ IMDb "+m.rating:"";
+ $("posterBox").innerHTML=poster(m,"poster");
+ $("overlay").classList.add("show");
+}
+function closeMovie(){$("overlay").classList.remove("show");current=null}
+function spin(){
+ const list=active();if(spinning||!list.length)return;
+ spinning=true;stats();
+ const chosen=list[Math.floor(Math.random()*list.length)];
+ const index=list.findIndex(m=>m.id===chosen.id);
+ const step=2*Math.PI/list.length;
+ const normalized=((rotation%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
+ const target=-(index+.5)*step-normalized+(6+Math.random()*3)*2*Math.PI;
+ const start=rotation,duration=5000,startTime=performance.now();
+ function frame(now){
+  const p=Math.min(1,(now-startTime)/duration),ease=1-Math.pow(1-p,4);
+  rotation=start+target*ease;draw();
+  if(p<1)return requestAnimationFrame(frame);
+  rotation=((rotation%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
+  spinning=false;$("last").textContent=chosen.title;
+  renderList();stats();openMovie(chosen);
+ }
+ requestAnimationFrame(frame);
+}
+async function loadMovies(){
+ $("status").textContent="Loading 250 movies and poster links…";
+ try{
+  const response=await fetch(DATA_URL);
+  if(!response.ok)throw new Error("Dataset unavailable");
+  const data=await response.json();
+  if(!Array.isArray(data.data)||data.data.length<250)throw new Error("Dataset format issue");
+  const saved=JSON.parse(localStorage.getItem(KEY)||"null");
+  const savedMap=new Map(Array.isArray(saved)?saved.map(m=>[m.title.toLowerCase(),m]):[]);
+  movies=data.data.slice(0,250).map(m=>{
+   const old=savedMap.get(String(m.title).toLowerCase());
+   return {id:old?.id||uid(),rank:m.rank,title:m.title,rating:String(m.rating??""),poster:m.image||"",url:m.url||"",watched:!!old?.watched};
+  });
+  $("status").textContent="Loaded "+movies.length+" movies from the August 2025 snapshot. Poster images require internet.";
+  save();render();
+ }catch(err){
+  $("status").textContent="Couldn't load the online 2025 list. Check your internet connection and refresh.";
+  $("list").innerHTML='<div class="empty">The movie data source could not be reached. Open this page with internet access and refresh.</div>';
+  $("spin").disabled=true;
+  console.error(err);
+ }
+}
+$("spin").addEventListener("click",spin);
+$("add").addEventListener("click",()=>addMovie($("newMovie").value));
+$("newMovie").addEventListener("keydown",e=>{if(e.key==="Enter")addMovie($("newMovie").value)});
+$("search").addEventListener("input",renderList);
+$("all").addEventListener("click",()=>{mode="all";renderList()});
+$("toWatch").addEventListener("click",()=>{mode="remaining";renderList()});
+$("showWatched").addEventListener("click",()=>{mode="watched";renderList()});
+$("list").addEventListener("click",e=>{
+ const b=e.target.closest("[data-remove]");if(!b)return;
+ movies=movies.filter(m=>m.id!==b.dataset.remove);save();render();toast("Movie removed.");
+});
+$("mark").addEventListener("click",()=>{
+ if(!current)return;
+ const m=movies.find(x=>x.id===current.id);if(m)m.watched=true;
+ const name=current.title;save();closeMovie();render();toast("Watched: "+name);
+});
+$("close").addEventListener("click",closeMovie);
+$("close2").addEventListener("click",closeMovie);
+$("overlay").addEventListener("click",e=>{if(e.target===$("overlay"))closeMovie()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeMovie()});
+$("reset").addEventListener("click",()=>{
+ if(!confirm("Reset watched status for all movies?"))return;
+ movies.forEach(m=>m.watched=false);save();render();toast("Watched progress reset.");
+});
+$("export").addEventListener("click",()=>{
+ const blob=new Blob([JSON.stringify(movies,null,2)],{type:"application/json"});
+ const url=URL.createObjectURL(blob),a=document.createElement("a");
+ a.href=url;a.download="movie-watchlist-2025.json";a.click();URL.revokeObjectURL(url);
+});
+$("import").addEventListener("click",()=>$("file").click());
+$("file").addEventListener("change",e=>{
+ const f=e.target.files[0];if(!f)return;
+ const reader=new FileReader();
+ reader.onload=()=>{
+  try{
+   const arr=JSON.parse(reader.result);if(!Array.isArray(arr))throw Error();
+   let added=0;
+   arr.forEach(m=>{
+    if(m&&typeof m.title==="string"&&!movies.some(x=>x.title.toLowerCase()===m.title.trim().toLowerCase())){
+     movies.push({id:uid(),title:m.title.trim(),rank:m.rank||"",rating:m.rating||"",poster:m.poster||"",url:m.url||"",watched:!!m.watched});added++;
+    }
+   });
+   save();render();toast(added+" movies imported.");
+  }catch(e){toast("Invalid JSON file.")}
+ };
+ reader.readAsText(f);e.target.value="";
+});
+loadMovies();
+</script>
+</body>
+</html>
